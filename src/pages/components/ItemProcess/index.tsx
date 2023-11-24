@@ -1,16 +1,21 @@
 import { ItemProcessContainer, ProcessStatus } from './styles'
 
-export function ItemProcess() {
+interface ProcessProps {
+  name: string
+  seconds: number
+}
+
+export function ItemProcess({ name, seconds }: ProcessProps) {
   return (
     <ItemProcessContainer>
       <h2>Nome do Processo:</h2>
-      <p>Inicializar o Windows</p>
+      <p>{name}</p>
       <h2>Tempo do Processo:</h2>
       <p>
-        <span>30</span> Segundos
+        <span>{seconds}</span> Segundos
       </p>
-      <ProcessStatus variant="verde">
-        <span>Em andamento</span>
+      <ProcessStatus variant="vermelho">
+        <span>Na Fila</span>
       </ProcessStatus>
     </ItemProcessContainer>
   )

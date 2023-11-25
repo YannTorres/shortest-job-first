@@ -4,7 +4,7 @@ import { ItemProcess } from '../components/ItemProcess'
 import { Input, ListProcess, MainContainer } from './styles'
 import * as zod from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const processFormValidation = zod.object({
   processName: zod.string().min(1, 'Informe o nome do Processo'),
@@ -24,12 +24,14 @@ export function Home() {
     },
   })
 
-  const { handleSubmit, register } = processForm
+  const { handleSubmit, register, reset } = processForm
 
   const [processData, setProcessData] = useState<processFormData[]>([])
+  const [currentProcess, setCurrentProcess] = useState<processFormData | null>(
+    null,
+  )
 
-  // const processCount = Object.keys(processData).length
-  // console.log(processCount)
+  const processCount = processData.length
 
   function handleCreateNewProcess(data: processFormData) {
     const newProcess: processFormData = {
@@ -38,7 +40,46 @@ export function Home() {
     }
 
     setProcessData((state) => [...state, newProcess])
+    reset()
   }
+
+  useEffect(() => {
+    const sortedProcesses = [...processData].sort(
+      (a, b) => a.processSeconds - b.processSeconds,
+    )
+
+    setCurrentProcess(sortedProcesses[0])
+  }, [processData])
+
+  // console.log(currentProcess)
+
+  const [remainingTime, setRemainingTime] = useState(
+    currentProcess?.processSeconds !== undefined
+      ? currentProcess.processSeconds
+      : 0,
+  )
+
+  useEffect(() => {
+    if (currentProcess) {
+      const totalTimeInSeconds = currentProcess.processSeconds
+      let currentTime = 0
+
+      const interval = setInterval(() => {
+        currentTime += 1
+        setRemainingTime((previousTime) => {
+          if (currentTime >= totalTimeInSeconds) {
+            clearInterval(interval)
+            console.log('Tempo atingido!')
+          }
+
+          return previousTime + 1
+        })
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [currentProcess])
+
+  console.log(remainingTime)
 
   return (
     <MainContainer>
@@ -59,7 +100,7 @@ export function Home() {
       </Input>
       <ListProcess>
         <p>Processos criados</p>
-        <span>0</span>
+        <span>{processCount}</span>
       </ListProcess>
       {processData.map((process) => {
         return (

@@ -21,7 +21,6 @@ interface Process {
   id: string
   processName: string
   processSeconds: number
-  startDate: Date
   finishedDate?: Date
 }
 
@@ -37,6 +36,9 @@ export function Home() {
 
   const [processData, setProcessData] = useState<Process[]>([])
   const [currentProcess, setCurrentProcess] = useState<Process | null>(null)
+  const [currentDateProcess, setCurrentDateProcess] = useState<Date | null>(
+    null,
+  )
   const [readyQueue, setReadyQueue] = useState<Process[]>([])
 
   const processCount = processData.length
@@ -46,12 +48,12 @@ export function Home() {
       id: new Date().getTime().toString(),
       processName: data.processName,
       processSeconds: data.processSeconds,
-      startDate: new Date(),
     }
 
     setProcessData((state) => [...state, newProcess])
 
     if (!currentProcess) {
+      setCurrentDateProcess(new Date())
       setCurrentProcess(newProcess)
     } else {
       setReadyQueue((queue) =>
@@ -69,12 +71,14 @@ export function Home() {
       (a, b) => a.processSeconds - b.processSeconds,
     )
 
-    if (sortedProcesses.length > 0) {
-      setCurrentProcess(sortedProcesses[0])
-    } else {
-      setCurrentProcess(null)
+    if (!currentProcess) {
+      if (sortedProcesses.length > 0) {
+        setCurrentProcess(sortedProcesses[0])
+      } else {
+        setCurrentProcess(null)
+      }
     }
-  }, [readyQueue])
+  }, [currentDateProcess, currentProcess, readyQueue])
 
   const markCurrentProcessAsFinished = useCallback(() => {
     if (currentProcess) {
@@ -92,33 +96,37 @@ export function Home() {
 
   useEffect(() => {
     let interval: number
-
-    if (currentProcess) {
+    if (currentProcess && currentDateProcess) {
       interval = setInterval(() => {
         const secondsDifference = differenceInSeconds(
           new Date(),
-          currentProcess.startDate,
+          currentDateProcess,
         )
-
         if (secondsDifference >= currentProcess.processSeconds) {
           markCurrentProcessAsFinished()
-
           if (readyQueue.length > 0) {
             const nextProcess = readyQueue[0]
             setCurrentProcess(nextProcess)
+            setCurrentDateProcess(new Date())
             setReadyQueue((queue) => queue.slice(1))
           } else {
             setCurrentProcess(null)
           }
         }
+        console.log(currentDateProcess)
       }, 1000)
     }
+
     return () => {
       clearInterval(interval)
+      console.log('cheguei')
     }
-  }, [currentProcess, markCurrentProcessAsFinished, readyQueue])
-
-  console.log(readyQueue)
+  }, [
+    currentDateProcess,
+    currentProcess,
+    markCurrentProcessAsFinished,
+    readyQueue,
+  ])
 
   return (
     <MainContainer>

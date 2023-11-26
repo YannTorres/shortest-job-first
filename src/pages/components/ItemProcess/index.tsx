@@ -3,9 +3,10 @@ import { ItemProcessContainer, ProcessStatus } from './styles'
 interface ProcessProps {
   name: string
   seconds: number
+  finishedDate?: Date
 }
 
-export function ItemProcess({ name, seconds }: ProcessProps) {
+export function ItemProcess({ name, seconds, finishedDate }: ProcessProps) {
   return (
     <ItemProcessContainer>
       <h2>Nome do Processo:</h2>
@@ -14,9 +15,16 @@ export function ItemProcess({ name, seconds }: ProcessProps) {
       <p>
         <span>{seconds}</span> Segundos
       </p>
-      <ProcessStatus variant="vermelho">
-        <span>Na Fila</span>
-      </ProcessStatus>
+      {finishedDate && (
+        <ProcessStatus variant="verde">
+          <span>Concluído</span>
+        </ProcessStatus>
+      )}
+      {!finishedDate && (
+        <ProcessStatus variant="vermelho">
+          <span>Na Fila</span>
+        </ProcessStatus>
+      )}
     </ItemProcessContainer>
   )
 }

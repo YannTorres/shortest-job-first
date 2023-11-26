@@ -4,7 +4,8 @@ import { ItemProcess } from '../components/ItemProcess'
 import { Input, ListProcess, MainContainer } from './styles'
 import * as zod from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { differenceInSeconds } from 'date-fns'
 
 const processFormValidation = zod.object({
   processName: zod.string().min(1, 'Informe o nome do Processo'),
@@ -16,6 +17,14 @@ const processFormValidation = zod.object({
 
 type processFormData = zod.infer<typeof processFormValidation>
 
+interface Process {
+  id: string
+  processName: string
+  processSeconds: number
+  startDate: Date
+  finishedDate?: Date
+}
+
 export function Home() {
   const processForm = useForm<processFormData>({
     resolver: zodResolver(processFormValidation),
@@ -26,60 +35,90 @@ export function Home() {
 
   const { handleSubmit, register, reset } = processForm
 
-  const [processData, setProcessData] = useState<processFormData[]>([])
-  const [currentProcess, setCurrentProcess] = useState<processFormData | null>(
-    null,
-  )
+  const [processData, setProcessData] = useState<Process[]>([])
+  const [currentProcess, setCurrentProcess] = useState<Process | null>(null)
+  const [readyQueue, setReadyQueue] = useState<Process[]>([])
 
   const processCount = processData.length
 
   function handleCreateNewProcess(data: processFormData) {
-    const newProcess: processFormData = {
+    const newProcess: Process = {
+      id: new Date().getTime().toString(),
       processName: data.processName,
       processSeconds: data.processSeconds,
+      startDate: new Date(),
     }
 
     setProcessData((state) => [...state, newProcess])
+
+    if (!currentProcess) {
+      setCurrentProcess(newProcess)
+    } else {
+      setReadyQueue((queue) =>
+        [...queue, newProcess].sort(
+          (a, b) => a.processSeconds - b.processSeconds,
+        ),
+      )
+    }
+
     reset()
   }
 
   useEffect(() => {
-    const sortedProcesses = [...processData].sort(
+    const sortedProcesses = [...readyQueue].sort(
       (a, b) => a.processSeconds - b.processSeconds,
     )
 
-    setCurrentProcess(sortedProcesses[0])
-  }, [processData])
+    if (sortedProcesses.length > 0) {
+      setCurrentProcess(sortedProcesses[0])
+    } else {
+      setCurrentProcess(null)
+    }
+  }, [readyQueue])
 
-  // console.log(currentProcess)
-
-  const [remainingTime, setRemainingTime] = useState(
-    currentProcess?.processSeconds !== undefined
-      ? currentProcess.processSeconds
-      : 0,
-  )
+  const markCurrentProcessAsFinished = useCallback(() => {
+    if (currentProcess) {
+      setProcessData((state) =>
+        state.map((process) => {
+          if (currentProcess && currentProcess.id === process.id) {
+            return { ...process, finishedDate: new Date() }
+          } else {
+            return process
+          }
+        }),
+      )
+    }
+  }, [currentProcess, setProcessData])
 
   useEffect(() => {
+    let interval: number
+
     if (currentProcess) {
-      const totalTimeInSeconds = currentProcess.processSeconds
-      let currentTime = 0
+      interval = setInterval(() => {
+        const secondsDifference = differenceInSeconds(
+          new Date(),
+          currentProcess.startDate,
+        )
 
-      const interval = setInterval(() => {
-        currentTime += 1
-        setRemainingTime((previousTime) => {
-          if (currentTime >= totalTimeInSeconds) {
-            clearInterval(interval)
-            console.log('Tempo atingido!')
+        if (secondsDifference >= currentProcess.processSeconds) {
+          markCurrentProcessAsFinished()
+
+          if (readyQueue.length > 0) {
+            const nextProcess = readyQueue[0]
+            setCurrentProcess(nextProcess)
+            setReadyQueue((queue) => queue.slice(1))
+          } else {
+            setCurrentProcess(null)
           }
-
-          return previousTime + 1
-        })
+        }
       }, 1000)
-      return () => clearInterval(interval)
     }
-  }, [currentProcess])
+    return () => {
+      clearInterval(interval)
+    }
+  }, [currentProcess, markCurrentProcessAsFinished, readyQueue])
 
-  console.log(remainingTime)
+  console.log(readyQueue)
 
   return (
     <MainContainer>
@@ -108,6 +147,7 @@ export function Home() {
             key={process.processName}
             seconds={process.processSeconds}
             name={process.processName}
+            finishedDate={process.finishedDate}
           />
         )
       })}
